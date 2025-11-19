@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database URL - update with your PostgreSQL connection string
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/setu_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://setuapi:SetuHope1979@localhost:5432/setusaathi")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

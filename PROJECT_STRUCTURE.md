@@ -2,10 +2,13 @@
 
 ```
 setuapi/
-├── main.py              # FastAPI application with all endpoints
+├── main.py              # FastAPI application (system endpoints) and router includes
 ├── database.py          # SQLAlchemy database models and session management
 ├── schemas.py           # Pydantic models for request/response validation
-├── crud.py              # CRUD operations for Patient entity
+├── crud_patient.py      # CRUD operations for Patient entity
+├── routers/             # API route handlers organized by domain
+│   ├── __init__.py      # Routers package
+│   └── patients.py      # Patient-specific endpoints router
 ├── create_tables.sql    # SQL script to create database tables
 ├── requirements.txt     # Python dependencies
 ├── env.example          # Environment variables template
@@ -17,8 +20,14 @@ setuapi/
 
 ### main.py
 - FastAPI application entry point
-- Contains all API endpoints (system and patient endpoints)
+- Registers routers from the routers package
 - Handles request routing and dependency injection
+
+### routers/
+- Package containing all API route handlers
+
+### routers/patients.py
+- APIRouter with patient-specific endpoints (create, read, update, delete, search)
 
 ### database.py
 - SQLAlchemy ORM models
@@ -29,7 +38,7 @@ setuapi/
 - Pydantic models for request/response validation
 - PatientCreate, PatientUpdate, PatientResponse schemas
 
-### crud.py
+### crud_patient.py
 - Database operations (Create, Read, Update, Delete)
 - Search functionality
 - Pagination support
