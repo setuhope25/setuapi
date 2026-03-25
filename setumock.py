@@ -11,6 +11,8 @@ from uuid import uuid4
 import uuid as uuid_module
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from database import SessionLocal
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -956,10 +958,52 @@ async def get_patient_history(patient_id: int):
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def mock_health_check():
     """
-    Health check endpoint for mock API
+    Health check endpoint that verifies database connectivity to Supabase.
+    Returns detailed status information about the mock API and database connection.
     """
-    return {
-        "status": "healthy",
+    health_status = {
+        "status": "unhealthy",
         "service": "mock-api",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": {
+            "connected": False,
+            "message": "Not connected"
+        },
+        "api": {
+            "running": True
+        }
     }
+    
+    try:
+        # Try to get a database session
+        db = SessionLocal()
+        
+        # Execute a simple query to test the connection
+        result = db.execute(text("SELECT * from village"))
+        village_row = result.fetchone()
+        
+        # Get database information
+        db_info = db.execute(text("SELECT current_database(), current_user, version()"))
+        db_row = db_info.fetchone()
+        
+        db.close()
+        
+        health_status["status"] = "healthy"
+        health_status["database"]["connected"] = True
+        health_status["database"]["message"] = "Connected to Supabase PostgreSQL"
+        
+        if db_row:
+            health_status["database"]["database_name"] = db_row[0]
+            health_status["database"]["user"] = db_row[1]
+            health_status["database"]["version"] = db_row[2]
+            health_status["database"]["village_table_sample"] = {
+                "id": village_row[0],
+                "name": village_row[1]
+            } if village_row else "No data in village table"
+        
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["database"]["message"] = f"Connection failed: {str(e)}"
+        health_status["error_details"] = str(e)
+    
+    return health_status
