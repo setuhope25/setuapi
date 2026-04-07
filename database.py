@@ -3,7 +3,7 @@ from datetime import datetime
 import psycopg2
 from psycopg2 import pool, Error
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Date, DateTime, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Date, DateTime, Text, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -66,6 +66,30 @@ def test_database_connection():
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
+        # Execute a simple query to test the connection
+        result = cursor.execute(text("SELECT * from village"))
+        village_row = result.fetchone()
+        
+        health_status = {
+        "status": "unhealthy",
+        "service": "mock-api",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": {
+            "connected": False,
+            "message": "Not connected"
+        },
+        "api": {
+            "running": True
+        }
+    }
+        
+        if village_row:
+           
+            health_status["database"]["village_table_sample"] = {
+                "id": village_row[0],
+                "name": village_row[1]
+            } if village_row else "No data in village table"
+
         return True, "Successfully connected to Neon PostgreSQL"
     except Error as e:
         return False, f"Database connection failed: {str(e)}"
@@ -102,15 +126,17 @@ class Patient(Base):
     __tablename__ = "patient"
 
     patient_id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String(255), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    age = Column(Integer)
+    age_type = Column(String(10))
+    village_id = Column(Integer)
     gender = Column(String(50))
     date_of_birth = Column(Date)
-    age = Column(Integer)
     mobile_number = Column(String(20))
     address = Column(Text)
     photo_url = Column(String(500))
-    created_by = Column(Integer, nullable=False)
-    updated_by = Column(Integer, nullable=False)
+    created_by = Column(String(50), nullable=False)
+    updated_by = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

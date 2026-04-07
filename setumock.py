@@ -12,7 +12,7 @@ import uuid as uuid_module
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
-from database import SessionLocal
+from database import SessionLocal, Patient
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -88,14 +88,16 @@ class PatientMockBase(BaseModel):
     gender: Optional[str] = None
     date_of_birth: Optional[date] = None
     age: Optional[int] = None
+    age_type: Optional[str] = None
+    village_id: Optional[int] = None
     mobile_number: Optional[str] = None
     address: Optional[str] = None
     photo_url: Optional[str] = None
 
 
 class PatientMockCreate(PatientMockBase):
-    created_by: int
-    updated_by: int
+    created_by: str
+    updated_by: str
 
 
 class PatientMockUpdate(BaseModel):
@@ -111,8 +113,8 @@ class PatientMockUpdate(BaseModel):
 
 class PatientMockResponse(PatientMockBase):
     patient_id: int
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -527,33 +529,59 @@ async def update_current_user(request: UpdateUserRequest):
 @router.post("/patients", response_model=PatientMockResponse, status_code=status.HTTP_201_CREATED)
 async def create_patient(patient: PatientMockCreate):
     """
-    Create a new patient record
+    Create a new patient record in Neon PostgreSQL
     """
-    global patient_id_counter
+    logger.info(f"Creating new patient in DB: {patient.full_name}")
 
-    logger.info(f"Creating new patient: {patient.full_name}")
+    db = SessionLocal()
+    try:
+        db_patient = Patient(
+            full_name=patient.full_name,
+            age=patient.age,
+            age_type=patient.age_type,
+            village_id=patient.village_id,
+            gender=patient.gender,
+            date_of_birth=patient.date_of_birth,
+            mobile_number=patient.mobile_number,
+            address=patient.address,
+            photo_url=patient.photo_url,
+            created_by=patient.created_by,
+            updated_by=patient.updated_by,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
 
-    patient_id_counter += 1
-    new_patient = {
-        "patient_id": patient_id_counter,
-        "full_name": patient.full_name,
-        "gender": patient.gender,
-        "date_of_birth": patient.date_of_birth,
-        "age": patient.age,
-        "mobile_number": patient.mobile_number,
-        "address": patient.address,
-        "photo_url": patient.photo_url,
-        "created_by": patient.created_by,
-        "updated_by": patient.updated_by,
-        "created_at": datetime.now(),
-        "updated_at": datetime.now()
-    }
+        db.add(db_patient)
+        db.commit()
+        db.refresh(db_patient)
 
-    patients_db[patient_id_counter] = new_patient
+        logger.info(f"Patient created in DB with ID: {db_patient.patient_id}")
 
-    logger.info(f"Patient created with ID: {patient_id_counter}")
-
-    return PatientMockResponse(**new_patient)
+        return PatientMockResponse(
+            patient_id=db_patient.patient_id,
+            full_name=db_patient.full_name,
+            gender=db_patient.gender,
+            date_of_birth=db_patient.date_of_birth,
+            age=db_patient.age,
+            age_type=db_patient.age_type,
+            village_id=db_patient.village_id,
+            mobile_number=db_patient.mobile_number,
+            address=db_patient.address,
+            photo_url=db_patient.photo_url,
+            created_by=db_patient.created_by,
+            updated_by=db_patient.updated_by,
+            created_at=db_patient.created_at,
+            updated_at=db_patient.updated_at
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create DB patient: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+    finally:
+        db.close()
 
 
 @router.get("/patients", response_model=List[PatientMockResponse], status_code=status.HTTP_200_OK)

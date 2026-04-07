@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db, test_database_connection
-from routers.patients import router as patient_router
+from sqlalchemy import text
+from database import init_db, SessionLocal
+from routers.patient_router import router as patient_router
 from setumock import router as mock_router
 from datetime import datetime
 
@@ -47,32 +48,52 @@ def root():
 @app.get("/health")
 def health_check():
     """
-    Health check endpoint that verifies Neon PostgreSQL connectivity.
+    Health check endpoint that verifies database connectivity.
     Returns detailed status information about the API and database connection.
     """
     health_status = {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat()
+        "status": "unhealthy",
+        "service": "SETU Patient API",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": {
+            "connected": False,
+            "message": "Not connected"
+        },
+        "api": {
+            "running": True
+        }
     }
     
     try:
-        # Test database connectivity using psycopg2
-        connected, message = test_database_connection()
-        
-        health_status["database"] = {
-            "connected": connected,
-            "message": message
-        }
-        
-        if not connected:
-            health_status["status"] = "degraded"
-        
+        db = SessionLocal()
+        result = db.execute(text("SELECT * from village"))
+        village_row = result.fetchone()
+
+        db_info = db.execute(text("SELECT current_database(), current_user, version()"))
+        db_row = db_info.fetchone()
+
+        db.close()
+
+        health_status["status"] = "healthy"
+        health_status["database"]["connected"] = True
+        health_status["database"]["message"] = "Connected to PostgreSQL"
+
+        if db_row:
+            health_status["database"]["database_name"] = db_row[0]
+            health_status["database"]["user"] = db_row[1]
+            health_status["database"]["version"] = db_row[2]
+            health_status["database"]["village_table_sample"] = {
+                "id": village_row[0],
+                "name": village_row[1]
+            } if village_row else "No data in village table"
+
     except Exception as e:
         health_status["status"] = "degraded"
         health_status["database"] = {
             "connected": False,
-            "message": f"Database health check failed: {str(e)}"
+            "message": f"Connection failed: {str(e)}"
         }
+        health_status["error_details"] = str(e)
     
     return health_status
 

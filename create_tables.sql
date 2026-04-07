@@ -2,18 +2,20 @@
 -- Run this script in your PostgreSQL database before using the API
 
 CREATE TABLE IF NOT EXISTS patient (
-    patient_id SERIAL PRIMARY KEY,
-    full_name VARCHAR(255) NOT NULL,
+    patient_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    full_name VARCHAR(100) NOT NULL,
+    age INTEGER,
+    age_type VARCHAR(10),
+    village_id INTEGER,
     gender VARCHAR(50),
     date_of_birth DATE,
-    age INTEGER,
     mobile_number VARCHAR(20),
-    address TEXT,
+    address VARCHAR(255),
     photo_url VARCHAR(500),
-    created_by INTEGER NOT NULL,
-    updated_by INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by VARCHAR(50),
+    updated_by VARCHAR(50),
+    created_at DATE DEFAULT CURRENT_DATE,
+    updated_at VARCHAR(50)
 );
 
 -- Create indexes for better query performance
